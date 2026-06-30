@@ -4,26 +4,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearBtn = document.getElementById('clear-btn');
     const detachBtn = document.getElementById('detach-btn');
     const autocompletePopup = document.getElementById('autocomplete-popup');
+    const themeBtn = document.getElementById('theme-btn');
 
     let currentSuggestions = [];
     let selectedSuggestionIndex = -1;
     let typingWord = '';
     let typingWordStart = -1;
-
+    // Commands for autocomplete
     const docs = [
-        { name: 'sin', signature: 'sin(x)', desc: 'Sine of a value' },
-        { name: 'cos', signature: 'cos(x)', desc: 'Cosine of a value' },
-        { name: 'tan', signature: 'tan(x)', desc: 'Tangent of a value' },
+        { name: 'sin', signature: 'sin(x)', desc: 'Sine of x' },
+        { name: 'cos', signature: 'cos(x)', desc: 'Cosine of x' },
+        { name: 'tan', signature: 'tan(x)', desc: 'Tangent of x' },
+        { name: 'asin', signature: 'asin(x)', desc: 'Inverse sine of x' },
+        { name: 'acos', signature: 'acos(x)', desc: 'Inverse cosine of x' },
+        { name: 'atan', signature: 'atan(x)', desc: 'Inverse tangent of x' },
+        { name: 'atan2', signature: 'atan2(y, x)', desc: 'Four-quadrant inverse tangent' },
+        { name: 'sinh', signature: 'sinh(x)', desc: 'Hyperbolic sine of x' },
+        { name: 'cosh', signature: 'cosh(x)', desc: 'Hyperbolic cosine of x' },
+        { name: 'tanh', signature: 'tanh(x)', desc: 'Hyperbolic tangent of x' },
+        { name: 'asinh', signature: 'asinh(x)', desc: 'Inverse hyperbolic sine' },
+        { name: 'acosh', signature: 'acosh(x)', desc: 'Inverse hyperbolic cosine' },
+        { name: 'atanh', signature: 'atanh(x)', desc: 'Inverse hyperbolic tangent' },
         { name: 'sqrt', signature: 'sqrt(x)', desc: 'Square root' },
         { name: 'pow', signature: 'pow(x, y)', desc: 'x to the power of y' },
-        { name: 'abs', signature: 'abs(x)', desc: 'Absolute value' },
-        { name: 'exp', signature: 'exp(x)', desc: 'Exponent' },
+        { name: 'exp', signature: 'exp(x)', desc: 'e to the power of x' },
         { name: 'log', signature: 'log(x, [base])', desc: 'Logarithm' },
-        { name: 'mean', signature: 'mean(a, b, ...)', desc: 'Average' },
-        { name: 'max', signature: 'max(a, b, ...)', desc: 'Maximum' },
-        { name: 'min', signature: 'min(a, b, ...)', desc: 'Minimum' },
-        { name: 'det', signature: 'det(x)', desc: 'Determinant of a matrix' },
+        { name: 'abs', signature: 'abs(x)', desc: 'Absolute value' },
+        { name: 'round', signature: 'round(x, [n])', desc: 'Round to n digits' },
+        { name: 'floor', signature: 'floor(x)', desc: 'Round down' },
+        { name: 'ceil', signature: 'ceil(x)', desc: 'Round up' },
+        { name: 'matrix', signature: 'matrix([..])', desc: 'Create a matrix' },
+        { name: 'det', signature: 'det(x)', desc: 'Matrix determinant' },
+        { name: 'inv', signature: 'inv(x)', desc: 'Matrix inverse' },
         { name: 'cross', signature: 'cross(x, y)', desc: 'Cross product' },
+        { name: 'dot', signature: 'dot(x, y)', desc: 'Dot product' },
+        { name: 'mean', signature: 'mean(a, b, ..)', desc: 'Calculate mean' },
+        { name: 'median', signature: 'median(a, b, ..)', desc: 'Calculate median' },
+        { name: 'max', signature: 'max(a, b, ..)', desc: 'Maximum value' },
+        { name: 'min', signature: 'min(a, b, ..)', desc: 'Minimum value' },
         { name: 'derivative', signature: 'derivative(expr, var)', desc: 'Calculus derivative' },
         { name: 'simplify', signature: 'simplify(expr)', desc: 'Simplify expression' },
         { name: 'clear', signature: 'clear', desc: 'Clear history' },
@@ -50,8 +68,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentInputBuffer = '';
     let currentScope = {};
 
-    // Load history
-    chrome.storage.local.get(['calcHistory'], (result) => {
+    // Load history and theme
+    chrome.storage.local.get(['calcHistory', 'theme'], (result) => {
+        if (result.theme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+        
         if (result.calcHistory) {
             historyLog = result.calcHistory;
             
@@ -66,6 +88,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             renderAllHistory();
         }
+    });
+
+    themeBtn.addEventListener('click', () => {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        if (newTheme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
+        chrome.storage.local.set({ theme: newTheme });
+        input.focus();
     });
 
     function saveHistory() {
