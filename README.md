@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="https://github.com/petescarth/cmdcalc/blob/main/calc-icon-128.jpg?raw=true" alt="CmdCalc Logo" width="128" height="128">
+</div>
+
 # CmdCalc
 
 CmdCalc is a powerful, terminal-style command-line calculator built as a Chrome Extension. Powered by the incredible [Math.js](https://mathjs.org/) engine, it brings advanced mathematics, intelligent autocomplete, and a persistent variable environment straight to your browser.
