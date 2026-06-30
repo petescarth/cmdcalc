@@ -35,4 +35,4 @@ Click the extension icon in your toolbar to open CmdCalc.
 
 ## License
 
-This project is open-source and free to use.
+This project is licensed under the Apache License 2.0.
