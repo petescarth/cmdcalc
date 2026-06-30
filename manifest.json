@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "CmdCalc - Command Line Calculator",
+  "version": "1.0.0",
+  "description": "The ultimate command-line style calculator for Chrome.",
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "calc-icon-16.png",
+      "48": "calc-icon-48.png",
+      "128": "calc-icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "calc-icon-16.png",
+    "48": "calc-icon-48.png",
+    "128": "calc-icon-128.png"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

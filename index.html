@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CmdCalc</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="math.min.js"></script>
+</head>
+<body class="theme-dark">
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <span class="prompt-icon">❯</span> CmdCalc
+            </div>
+            <div class="actions">
+                <button id="clear-btn" class="icon-btn" title="Clear History (Ctrl+L)">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
+                <button id="detach-btn" class="icon-btn" title="Detach Window">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </button>
+            </div>
+        </header>
+        <main class="terminal">
+            <div id="history" class="history"></div>
+            <div class="input-line">
+                <span class="prompt">❯</span>
+                <input type="text" id="cli-input" placeholder="Type a math expression..." autocomplete="off" spellcheck="false" autofocus>
+                <div id="autocomplete-popup" class="autocomplete-popup hidden"></div>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
