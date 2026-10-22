@@ -5,6 +5,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const detachBtn = document.getElementById('detach-btn');
     const autocompletePopup = document.getElementById('autocomplete-popup');
     const themeBtn = document.getElementById('theme-btn');
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsModal = document.getElementById('settings-modal');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+    const resetSettingsBtn = document.getElementById('reset-settings-btn');
+    const settingUpperExp = document.getElementById('setting-upper-exp');
+    const settingLowerExp = document.getElementById('setting-lower-exp');
+    const settingPrecision = document.getElementById('setting-precision');
+    const previewOutput = document.getElementById('settings-preview-output');
 
     let currentSuggestions = [];
     let selectedSuggestionIndex = -1;
@@ -45,7 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
         { name: 'derivative', signature: 'derivative(expr, var)', desc: 'Calculus derivative' },
         { name: 'simplify', signature: 'simplify(expr)', desc: 'Simplify expression' },
         { name: 'clear', signature: 'clear', desc: 'Clear history' },
+        { name: 'config', signature: 'config [key] [val]', desc: 'View or set number format options' },
         { name: 'help', signature: 'help', desc: 'Show basic help' },
+        { name: 'settings', signature: 'settings', desc: 'Open settings dialog' },
         { name: 'vars', signature: 'vars', desc: 'List defined variables' }
     ];
 
@@ -55,6 +66,29 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isDetached) {
         document.body.classList.add('detached');
         detachBtn.style.display = 'none'; // hide detach button if already detached
+    }
+
+    // Sensible formatting defaults:
+    // Pure decimal until 100,000,000 (upperExp: 9 switches to exponential at 10^9 = 1,000,000,000)
+    // Pure decimal down to 0.000001 (lowerExp: -6 switches to exponential below 10^-6)
+    const DEFAULT_CONFIG = {
+        upperExp: 9,
+        lowerExp: -6,
+        precision: 14
+    };
+
+    let currentConfig = { ...DEFAULT_CONFIG };
+
+    function getFormatOptions() {
+        return {
+            precision: currentConfig.precision,
+            lowerExp: currentConfig.lowerExp,
+            upperExp: currentConfig.upperExp
+        };
+    }
+
+    function saveConfig() {
+        chrome.storage.local.set({ calcConfig: currentConfig });
     }
 
     // Configure math.js to use BigNumbers to avoid precision issues
@@ -68,10 +102,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentInputBuffer = '';
     let currentScope = {};
 
-    // Load history and theme
-    chrome.storage.local.get(['calcHistory', 'theme'], (result) => {
+    // Load history, theme, and config
+    chrome.storage.local.get(['calcHistory', 'theme', 'calcConfig'], (result) => {
         if (result.theme === 'light') {
             document.documentElement.setAttribute('data-theme', 'light');
+        }
+
+        if (result.calcConfig) {
+            currentConfig = { ...DEFAULT_CONFIG, ...result.calcConfig };
         }
         
         if (result.calcHistory) {
@@ -307,20 +345,22 @@ document.addEventListener('DOMContentLoaded', () => {
             historyNavIndex = -1;
             currentInputBuffer = '';
             
-            if (expr.toLowerCase() === 'clear') {
+            const exprLower = expr.toLowerCase();
+
+            if (exprLower === 'clear') {
                 clearHistory();
                 input.value = '';
                 return;
             }
 
-            if (expr.toLowerCase() === 'help') {
+            if (exprLower === 'help') {
                 const helpText = `Available Functions & Constants:
 • Basic: +, -, *, /, %, ^, **
 • Constants: pi, e, phi
 • Algebra: sqrt(x), pow(x, y), abs(x), exp(x), log(x)
 • Trig: sin(x), cos(x), tan(x) (use 'deg' for degrees, e.g. sin(45 deg))
 • Rounding: round(x), floor(x), ceil(x)
-• Commands: clear, help, help advanced`;
+• Commands: clear, config, help, help advanced, settings, vars`;
                 historyLog.push({ expr, result: helpText, isError: false, isHelp: true });
                 renderHistoryItem(expr, helpText, false, true);
                 saveHistory();
@@ -328,7 +368,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (expr.toLowerCase() === 'vars') {
+            if (exprLower === 'settings') {
+                openSettingsModal();
+                input.value = '';
+                return;
+            }
+
+            if (exprLower.startsWith('config')) {
+                const res = handleConfigCommand(expr);
+                historyLog.push({ expr, result: res.text, isError: !res.success, isHelp: res.success });
+                renderHistoryItem(expr, res.text, !res.success, res.success);
+                saveHistory();
+                input.value = '';
+                return;
+            }
+
+            if (exprLower === 'vars') {
                 const keys = Object.keys(currentScope);
                 let text = "Defined Variables:\n";
                 if (keys.length === 0) {
@@ -339,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (typeof val === 'function' || val?.syntax) {
                             text += `• ${k} = [Function]\n`;
                         } else {
-                            text += `• ${k} = ${mathObj.format(val, { precision: 14 })}\n`;
+                            text += `• ${k} = ${mathObj.format(val, getFormatOptions())}\n`;
                         }
                     });
                 }
@@ -350,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (expr.toLowerCase() === 'help advanced') {
+            if (exprLower === 'help advanced') {
                 const helpText = `Advanced Math.js Features:
 • Variables: x = 5, y = x * 2, f(x) = x^2
 • Units: 5 cm to inch, 100 km/h to mph
@@ -371,7 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let evalResult = mathObj.evaluate(expr, currentScope);
                 
                 // Format the output
-                const formattedResult = mathObj.format(evalResult, { precision: 14 });
+                const formattedResult = mathObj.format(evalResult, getFormatOptions());
                 
                 // Push to history
                 historyLog.push({ expr, result: formattedResult, isError: false });
@@ -417,6 +472,157 @@ document.addEventListener('DOMContentLoaded', () => {
         renderAllHistory();
     }
 
+    function handleConfigCommand(expr) {
+        const parts = expr.trim().split(/\s+/);
+        if (parts.length === 1) {
+            const lines = [
+                'Current Configuration:',
+                `• upperExp: ${currentConfig.upperExp} (decimals up to 100,000,000; scientific at 10^${currentConfig.upperExp})`,
+                `• lowerExp: ${currentConfig.lowerExp} (decimals down to 0.000001; scientific below 10^${currentConfig.lowerExp})`,
+                `• precision: ${currentConfig.precision} (significant digits)`,
+                '',
+                'Commands:',
+                '• config upperExp <int>   (set upper exponent threshold, e.g. 9)',
+                '• config lowerExp <int>   (set lower exponent threshold, e.g. -6)',
+                '• config precision <int>  (set significant digits, 1-64)',
+                '• config reset            (restore default thresholds)',
+                '• settings                (open settings dialog)'
+            ];
+            return { success: true, text: lines.join('\n') };
+        }
+
+        const sub = parts[1].toLowerCase();
+        if (sub === 'reset') {
+            currentConfig = { ...DEFAULT_CONFIG };
+            saveConfig();
+            return { success: true, text: '✓ Configuration reset to default values.' };
+        }
+
+        if (parts.length < 3) {
+            return { success: false, text: 'Usage: config <upperExp|lowerExp|precision> <value>' };
+        }
+
+        const val = parseInt(parts[2], 10);
+        if (isNaN(val)) {
+            return { success: false, text: 'Error: Value must be a valid integer.' };
+        }
+
+        if (sub === 'upperexp') {
+            if (val < 2 || val > 30) {
+                return { success: false, text: 'Error: upperExp must be an integer between 2 and 30.' };
+            }
+            currentConfig.upperExp = val;
+            saveConfig();
+            return { success: true, text: `✓ Set upperExp to ${val} (scientific notation triggers at 10^${val})` };
+        } else if (sub === 'lowerexp') {
+            if (val > -1 || val < -30) {
+                return { success: false, text: 'Error: lowerExp must be an integer between -30 and -1.' };
+            }
+            currentConfig.lowerExp = val;
+            saveConfig();
+            return { success: true, text: `✓ Set lowerExp to ${val} (scientific notation triggers below 10^${val})` };
+        } else if (sub === 'precision') {
+            if (val < 1 || val > 64) {
+                return { success: false, text: 'Error: precision must be an integer between 1 and 64.' };
+            }
+            currentConfig.precision = val;
+            saveConfig();
+            return { success: true, text: `✓ Set precision to ${val}` };
+        } else {
+            return { success: false, text: `Error: Unknown key "${parts[1]}". Valid keys: upperExp, lowerExp, precision, reset.` };
+        }
+    }
+
+    function updateSettingsPreview() {
+        if (!previewOutput) return;
+        const upperVal = parseInt(settingUpperExp.value, 10);
+        const lowerVal = parseInt(settingLowerExp.value, 10);
+        const precVal = parseInt(settingPrecision.value, 10);
+
+        const previewOpts = {
+            precision: isNaN(precVal) || precVal < 1 ? currentConfig.precision : precVal,
+            lowerExp: isNaN(lowerVal) ? currentConfig.lowerExp : lowerVal,
+            upperExp: isNaN(upperVal) ? currentConfig.upperExp : upperVal
+        };
+
+        try {
+            const samples = ['100000', '100000000', '1000000000', '0.000001', '0.0000001'];
+            const lines = samples.map(s => {
+                const val = mathObj.bignumber(s);
+                const formatted = mathObj.format(val, previewOpts);
+                const displayInput = Number(s).toLocaleString('en-US', { maximumFractionDigits: 10 });
+                return `${displayInput} → ${formatted}`;
+            });
+            previewOutput.textContent = lines.join('\n');
+        } catch (e) {
+            previewOutput.textContent = 'Invalid format options';
+        }
+    }
+
+    function openSettingsModal() {
+        settingUpperExp.value = currentConfig.upperExp;
+        settingLowerExp.value = currentConfig.lowerExp;
+        settingPrecision.value = currentConfig.precision;
+        updateSettingsPreview();
+        settingsModal.classList.remove('hidden');
+        settingUpperExp.focus();
+    }
+
+    function closeSettingsModal() {
+        settingsModal.classList.add('hidden');
+        input.focus();
+    }
+
+    function onSettingInputChange() {
+        const upper = parseInt(settingUpperExp.value, 10);
+        const lower = parseInt(settingLowerExp.value, 10);
+        const prec = parseInt(settingPrecision.value, 10);
+
+        if (!isNaN(upper) && upper >= 2 && upper <= 30) {
+            currentConfig.upperExp = upper;
+        }
+        if (!isNaN(lower) && lower >= -30 && lower <= -1) {
+            currentConfig.lowerExp = lower;
+        }
+        if (!isNaN(prec) && prec >= 1 && prec <= 64) {
+            currentConfig.precision = prec;
+        }
+        saveConfig();
+        updateSettingsPreview();
+    }
+
+    function resetSettings() {
+        currentConfig = { ...DEFAULT_CONFIG };
+        saveConfig();
+        settingUpperExp.value = currentConfig.upperExp;
+        settingLowerExp.value = currentConfig.lowerExp;
+        settingPrecision.value = currentConfig.precision;
+        updateSettingsPreview();
+    }
+
+    if (settingsBtn) settingsBtn.addEventListener('click', openSettingsModal);
+    if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeSettingsModal);
+    if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', closeSettingsModal);
+    if (resetSettingsBtn) resetSettingsBtn.addEventListener('click', resetSettings);
+
+    if (settingUpperExp) settingUpperExp.addEventListener('input', onSettingInputChange);
+    if (settingLowerExp) settingLowerExp.addEventListener('input', onSettingInputChange);
+    if (settingPrecision) settingPrecision.addEventListener('input', onSettingInputChange);
+
+    if (settingsModal) {
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                closeSettingsModal();
+            }
+        });
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && settingsModal && !settingsModal.classList.contains('hidden')) {
+            closeSettingsModal();
+        }
+    });
+
     clearBtn.addEventListener('click', clearHistory);
 
     detachBtn.addEventListener('click', () => {
@@ -426,9 +632,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Ensure input keeps focus when clicking around
+    // Ensure input keeps focus when clicking around (unless clicking inside button or settings modal)
     document.addEventListener('click', (e) => {
-        if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
+        if (e.target.tagName !== 'BUTTON' && !e.target.closest('button') && !e.target.closest('#settings-modal')) {
             input.focus();
         }
     });

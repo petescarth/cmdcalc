@@ -17,6 +17,9 @@
                 <button id="theme-btn" class="icon-btn" title="Toggle Theme">
                     🌓
                 </button>
+                <button id="settings-btn" class="icon-btn" title="Settings (config)">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </button>
                 <button id="clear-btn" class="icon-btn" title="Clear History (Ctrl+L)">
                     <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                 </button>
@@ -33,6 +36,39 @@
                 <div id="autocomplete-popup" class="autocomplete-popup hidden"></div>
             </div>
         </main>
+        <div id="settings-modal" class="modal-overlay hidden">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <span class="modal-title">Format Settings</span>
+                    <button id="close-settings-btn" class="icon-btn" title="Close">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="setting-group">
+                        <label class="setting-label" for="setting-upper-exp">Large Number Threshold (10ⁿ)</label>
+                        <input type="number" id="setting-upper-exp" class="setting-input" min="2" max="30" step="1">
+                        <span class="setting-hint">Values &lt; 10ⁿ remain pure decimal (default: 9 for 100M)</span>
+                    </div>
+                    <div class="setting-group">
+                        <label class="setting-label" for="setting-lower-exp">Small Number Threshold (10ⁿ)</label>
+                        <input type="number" id="setting-lower-exp" class="setting-input" min="-30" max="-1" step="1">
+                        <span class="setting-hint">Values &ge; 10ⁿ remain pure decimal (default: -6 for 0.000001)</span>
+                    </div>
+                    <div class="setting-group">
+                        <label class="setting-label" for="setting-precision">Precision (Significant Digits)</label>
+                        <input type="number" id="setting-precision" class="setting-input" min="1" max="64" step="1">
+                        <span class="setting-hint">Significant digits to display (default: 14)</span>
+                    </div>
+                    <div class="setting-preview">
+                        <div class="preview-title">Live Preview</div>
+                        <div id="settings-preview-output" class="preview-output"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="reset-settings-btn" class="btn btn-secondary">Reset Defaults</button>
+                    <button id="save-settings-btn" class="btn btn-primary">Done</button>
+                </div>
+            </div>
+        </div>
     </div>
     <script src="app.js"></script>
 </body>

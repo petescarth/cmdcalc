@@ -31,7 +31,17 @@ Click the extension icon in your toolbar to open CmdCalc.
 - `help advanced`: Lists advanced mathematical capabilities.
 - `clear` (or `Ctrl+L`): Clears your calculation history and variable scope.
 - `vars`: Lists all your currently defined variables and custom functions.
+- `config`: View or adjust number formatting thresholds (e.g. `config upperExp 12`, `config reset`).
+- `settings`: Open the format settings dialog (also available via the ⚙️ header button).
 - `Arrow Up` / `Arrow Down`: Navigate through your previous calculations.
+
+## Configuration & Formatting
+
+By default, CmdCalc keeps numbers formatted as pure decimals:
+- Large numbers remain decimal up to 100,000,000 and 999,999,999 (`upperExp: 9`, switching to scientific notation only at `1e+9`).
+- Small numbers remain decimal down to 0.000001 (`lowerExp: -6`, switching to scientific notation only below `1e-6`).
+
+You can customize these thresholds anytime using the `config` command or via the Settings icon (⚙️) in the header. Settings persist automatically across sessions.
 
 ## License
 
