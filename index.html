@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CmdCalc</title>
     <link rel="stylesheet" href="style.css">
-    <script src="math.min.js"></script>
+    <script>if(localStorage.getItem('theme')==='light') document.documentElement.setAttribute('data-theme', 'light');</script>
+    <script src="math.min.js" defer></script>
 </head>
 <body class="theme-dark">
     <div class="app-container">
@@ -70,6 +71,6 @@
             </div>
         </div>
     </div>
-    <script src="app.js"></script>
+    <script src="app.js" defer></script>
 </body>
 </html>

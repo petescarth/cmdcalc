@@ -101,9 +101,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let historyNavIndex = -1;
     let currentInputBuffer = '';
     let currentScope = {};
+    let savedScope = {};
 
-    // Load history, theme, and config
-    chrome.storage.local.get(['calcHistory', 'theme', 'calcConfig'], (result) => {
+    // Load history, theme, config, and scope
+    chrome.storage.local.get(['calcHistory', 'theme', 'calcConfig', 'savedScope'], (result) => {
         if (result.theme === 'light') {
             document.documentElement.setAttribute('data-theme', 'light');
         }
@@ -111,19 +112,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (result.calcConfig) {
             currentConfig = { ...DEFAULT_CONFIG, ...result.calcConfig };
         }
+        mathObj.config({ precision: currentConfig.precision });
+        
+        if (result.savedScope) {
+            savedScope = result.savedScope;
+            Object.values(savedScope).forEach(expr => {
+                try {
+                    mathObj.evaluate(expr, currentScope);
+                } catch(e) {}
+            });
+        }
         
         if (result.calcHistory) {
             historyLog = result.calcHistory;
-            
-            // Rebuild variable scope from history
-            historyLog.forEach(item => {
-                if (!item.isError && !item.isHelp) {
-                    try {
-                        mathObj.evaluate(item.expr, currentScope);
-                    } catch(e) {}
-                }
-            });
-            
             renderAllHistory();
         }
     });
@@ -136,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             document.documentElement.removeAttribute('data-theme');
         }
+        localStorage.setItem('theme', newTheme);
         chrome.storage.local.set({ theme: newTheme });
         input.focus();
     });
@@ -374,7 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (exprLower.startsWith('config')) {
+            const parts = exprLower.split(/\s+/);
+            if (parts[0] === 'config') {
                 const res = handleConfigCommand(expr);
                 historyLog.push({ expr, result: res.text, isError: !res.success, isHelp: res.success });
                 renderHistoryItem(expr, res.text, !res.success, res.success);
@@ -425,6 +428,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Evaluate using math.js with the current scope
                 let evalResult = mathObj.evaluate(expr, currentScope);
                 
+                // Track assignments for scope persistence
+                try {
+                    const node = mathObj.parse(expr);
+                    const assignments = node.filter(n => n.isAssignmentNode || n.isFunctionAssignmentNode);
+                    if (assignments.length > 0) {
+                        assignments.forEach(n => {
+                            savedScope[n.name] = expr;
+                        });
+                        chrome.storage.local.set({ savedScope });
+                    }
+                } catch (e) {
+                    // Ignore parse errors here if evaluate succeeded
+                }
+                
                 // Format the output
                 const formattedResult = mathObj.format(evalResult, getFormatOptions());
                 
@@ -468,6 +485,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function clearHistory() {
         historyLog = [];
         currentScope = {};
+        savedScope = {};
+        chrome.storage.local.set({ savedScope });
         saveHistory();
         renderAllHistory();
     }
@@ -494,6 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const sub = parts[1].toLowerCase();
         if (sub === 'reset') {
             currentConfig = { ...DEFAULT_CONFIG };
+            mathObj.config({ precision: currentConfig.precision });
             saveConfig();
             return { success: true, text: '✓ Configuration reset to default values.' };
         }
@@ -526,6 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return { success: false, text: 'Error: precision must be an integer between 1 and 64.' };
             }
             currentConfig.precision = val;
+            mathObj.config({ precision: val });
             saveConfig();
             return { success: true, text: `✓ Set precision to ${val}` };
         } else {
@@ -586,6 +607,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (!isNaN(prec) && prec >= 1 && prec <= 64) {
             currentConfig.precision = prec;
+            mathObj.config({ precision: prec });
         }
         saveConfig();
         updateSettingsPreview();
@@ -593,6 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function resetSettings() {
         currentConfig = { ...DEFAULT_CONFIG };
+        mathObj.config({ precision: currentConfig.precision });
         saveConfig();
         settingUpperExp.value = currentConfig.upperExp;
         settingLowerExp.value = currentConfig.lowerExp;
@@ -636,6 +659,51 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', (e) => {
         if (e.target.tagName !== 'BUTTON' && !e.target.closest('button') && !e.target.closest('#settings-modal')) {
             input.focus();
+        }
+    });
+
+    // Cross-window synchronization
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== 'local') return;
+
+        if (changes.calcHistory) {
+            historyLog = changes.calcHistory.newValue || [];
+            renderAllHistory();
+        }
+
+        if (changes.theme) {
+            const newTheme = changes.theme.newValue;
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            if ((newTheme === 'light') !== (currentTheme === 'light')) {
+                if (newTheme === 'light') {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+                localStorage.setItem('theme', newTheme);
+            }
+        }
+
+        if (changes.calcConfig) {
+            currentConfig = { ...DEFAULT_CONFIG, ...(changes.calcConfig.newValue || {}) };
+            mathObj.config({ precision: currentConfig.precision });
+            
+            if (settingsModal && !settingsModal.classList.contains('hidden')) {
+                settingUpperExp.value = currentConfig.upperExp;
+                settingLowerExp.value = currentConfig.lowerExp;
+                settingPrecision.value = currentConfig.precision;
+                updateSettingsPreview();
+            }
+        }
+
+        if (changes.savedScope) {
+            savedScope = changes.savedScope.newValue || {};
+            currentScope = {};
+            Object.values(savedScope).forEach(expr => {
+                try {
+                    mathObj.evaluate(expr, currentScope);
+                } catch(e) {}
+            });
         }
     });
 });
